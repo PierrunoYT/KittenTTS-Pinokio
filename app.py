@@ -47,7 +47,7 @@ VOICES = [
 ]
 
 # Create Gradio interface
-with gr.Blocks(title="KittenTTS 😻", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="KittenTTS 😻", theme=gr.themes.Default()) as demo:
     gr.Markdown("# KittenTTS 😻")
     gr.Markdown("Ultra-lightweight text-to-speech with just 15M parameters!")
     
