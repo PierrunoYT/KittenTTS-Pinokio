@@ -192,7 +192,9 @@ demo.launch(
 
 ## License
 
-This Pinokio integration is open source. KittenTTS model license applies separately.
+This Pinokio integration is licensed under the [MIT License](LICENSE). 
+
+**Note**: KittenTTS model has its own separate license terms. Please refer to the [KittenTTS repository](https://github.com/KittenML/KittenTTS) for model licensing information.
 
 ## Credits
 
