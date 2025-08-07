@@ -96,7 +96,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="KittenTTS Gradio Interface")
     parser.add_argument("--port", type=int, default=7860, help="Port to run the server on")
-    parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to run the server on")
+    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host to run the server on")
     
     args = parser.parse_args()
     
