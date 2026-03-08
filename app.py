@@ -25,15 +25,27 @@ def generate_speech(text, voice):
         tts_model = initialize_model()
         if tts_model is None:
             return None, "Error: Could not load KittenTTS model"
+
+        if not isinstance(text, str) or not text.strip():
+            return None, "Error: Input text cannot be empty"
+
+        if voice not in VOICES:
+            return None, "Error: Invalid voice selection"
         
         # Generate audio
         audio = tts_model.generate(text, voice=voice)
+
+        # Ensure type/shape are valid for soundfile writing
+        audio = np.asarray(audio, dtype=np.float32)
+        if audio.ndim == 0:
+            audio = audio.reshape(1)
         
         # Create temporary file
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-        sf.write(temp_file.name, audio, 24000)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
+            sf.write(temp_file.name, audio, 24000)
+            output_path = temp_file.name
         
-        return temp_file.name, "Audio generated successfully!"
+        return output_path, "Audio generated successfully!"
         
     except Exception as e:
         return None, f"Error generating audio: {str(e)}"
