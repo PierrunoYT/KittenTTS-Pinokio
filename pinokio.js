@@ -2,7 +2,7 @@ const path = require('path')
 module.exports = {
   version: "1.0.0",
   title: "KittenTTS 😻",
-  description: "Ultra-lightweight text-to-speech with just 15M parameters - CPU optimized and high-quality voice synthesis",
+  description: "Ultra-lightweight text-to-speech (15M-80M params) — CPU optimized, 8 voices, ONNX-powered",
   icon: "icon.png",
   menu: async (kernel, info) => {
     let installed = info.exists("env")

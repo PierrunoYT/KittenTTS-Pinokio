@@ -4,5 +4,11 @@ module.exports = {
     params: {
       message: "git pull"
     }
+  }, {
+    method: "shell.run",
+    params: {
+      venv: "env",
+      message: "uv pip install -r requirements.txt"
+    }
   }]
 }
