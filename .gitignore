@@ -93,6 +93,9 @@ Thumbs.db
 .gradio/
 gradio_queue.db
 
+# Pinokio install marker
+INSTALLATION_COMPLETE.txt
+
 # Logs
 *.log
 logs/
