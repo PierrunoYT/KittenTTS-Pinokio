@@ -5,11 +5,9 @@ module.exports = {
       message: "git pull",
     },
   }, {
-    method: "shell.run",
+    method: "script.start",
     params: {
-      venv: "env",
-      path: "app",
-      message: "uv pip install -r requirements.txt",
+      uri: "install.js",
     },
   }],
 }

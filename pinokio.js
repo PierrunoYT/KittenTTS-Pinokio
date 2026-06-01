@@ -1,5 +1,5 @@
 module.exports = {
-  version: "5.0",
+  version: "7.0",
   title: "KittenTTS 😻",
   description: "Ultra-lightweight text-to-speech (15M-80M params) — CPU optimized, 8 voices, ONNX-powered",
   icon: "icon.jpg",
