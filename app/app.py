@@ -28,13 +28,28 @@ def get_model(model_name):
 
 def generate_speech(text, voice, speed, model_name):
     try:
+        if not isinstance(text, str) or not text.strip():
+            return None, "Error: Input text cannot be empty"
+
+        if voice not in VOICES:
+            return None, "Error: Invalid voice selection"
+
+        if model_name not in MODELS:
+            return None, "Error: Invalid model selection"
+
         tts_model = get_model(model_name)
         audio = tts_model.generate(text, voice=voice, speed=speed)
 
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-        sf.write(temp_file.name, audio, 24000)
+        # Ensure type/shape are valid for soundfile writing
+        audio = np.asarray(audio, dtype=np.float32)
+        if audio.ndim == 0:
+            audio = audio.reshape(1)
 
-        return temp_file.name, "Audio generated successfully!"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
+            sf.write(temp_file.name, audio, 24000)
+            output_path = temp_file.name
+
+        return output_path, "Audio generated successfully!"
     except Exception as e:
         return None, f"Error generating audio: {str(e)}"
 
