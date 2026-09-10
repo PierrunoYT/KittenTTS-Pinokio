@@ -22,7 +22,6 @@ wheels/
 MANIFEST
 
 # Virtual environments
-higgs_audio_env/
 venv/
 env/
 ENV/
@@ -30,10 +29,6 @@ env.bak/
 venv.bak/
 .venv/
 .env/
-
-# Temporary installation directories
-temp_higgs/
-higgs-audio/
 
 # PyTorch
 *.pth
@@ -66,6 +61,7 @@ Pipfile.lock
 *.h5
 *.hdf5
 *.bin
+*.onnx
 *.safetensors
 
 # Hugging Face cache
@@ -75,9 +71,6 @@ transformers_cache/
 # Data files
 data/
 datasets/
-*.csv
-*.json
-*.xml
 
 # IDE
 .vscode/
@@ -92,9 +85,6 @@ Thumbs.db
 # Gradio
 .gradio/
 gradio_queue.db
-
-# Pinokio install marker
-INSTALLATION_COMPLETE.txt
 
 # Logs
 *.log
@@ -111,3 +101,5 @@ generation*.wav
 # Generated audio outputs
 outputs/
 generated/
+# Agent tooling runtime
+.open-edit/
