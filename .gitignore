@@ -101,5 +101,6 @@ generation*.wav
 # Generated audio outputs
 outputs/
 generated/
+
 # Agent tooling runtime
 .open-edit/
