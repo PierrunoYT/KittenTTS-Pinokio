@@ -1,8 +1,13 @@
+import atexit
+import os
+import shutil
+import tempfile
+import threading
+
 import gradio as gr
+import numpy as np
 import soundfile as sf
 from kittentts import KittenTTS
-import numpy as np
-import tempfile
 
 # Available models (ordered by quality/size)
 MODELS = {
@@ -15,16 +20,30 @@ MODELS = {
 # Available voices
 VOICES = ["Bella", "Jasper", "Luna", "Bruno", "Rosie", "Hugo", "Kiki", "Leo"]
 
-# Model cache
+DEFAULT_MODEL = "Nano (15M - Fastest)"
+SAMPLE_RATE = 24000
+MIN_SPEED, MAX_SPEED = 0.5, 2.0
+
+# Model cache. Loading is slow, so hold a lock to keep concurrent requests
+# from loading the same model several times over.
 loaded_models = {}
+_model_lock = threading.Lock()
+
+# Generated clips live here so they can all be removed on exit instead of
+# accumulating in the system temp directory for the life of the machine.
+OUTPUT_DIR = tempfile.mkdtemp(prefix="kittentts-")
+atexit.register(shutil.rmtree, OUTPUT_DIR, True)
+
 
 def get_model(model_name):
     model_id = MODELS[model_name]
-    if model_id not in loaded_models:
-        print(f"Loading model: {model_id}...")
-        loaded_models[model_id] = KittenTTS(model_id)
-        print(f"Model {model_id} loaded successfully!")
-    return loaded_models[model_id]
+    with _model_lock:
+        if model_id not in loaded_models:
+            print(f"Loading model: {model_id}...")
+            loaded_models[model_id] = KittenTTS(model_id)
+            print(f"Model {model_id} loaded successfully!")
+        return loaded_models[model_id]
+
 
 def generate_speech(text, voice, speed, model_name):
     try:
@@ -37,21 +56,36 @@ def generate_speech(text, voice, speed, model_name):
         if model_name not in MODELS:
             return None, "Error: Invalid model selection"
 
+        try:
+            speed = float(speed)
+        except (TypeError, ValueError):
+            return None, "Error: Speed must be a number"
+        if not np.isfinite(speed):
+            return None, "Error: Speed must be a number"
+        speed = min(max(speed, MIN_SPEED), MAX_SPEED)
+
         tts_model = get_model(model_name)
         audio = tts_model.generate(text, voice=voice, speed=speed)
 
-        # Ensure type/shape are valid for soundfile writing
+        # Ensure type/shape/range are valid for soundfile writing
         audio = np.asarray(audio, dtype=np.float32)
         if audio.ndim == 0:
             audio = audio.reshape(1)
+        if audio.size == 0:
+            return None, "Error: Model returned empty audio"
+        audio = np.nan_to_num(audio, nan=0.0, posinf=1.0, neginf=-1.0)
+        audio = np.clip(audio, -1.0, 1.0)
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
-            sf.write(temp_file.name, audio, 24000)
-            output_path = temp_file.name
+        # Close the handle before soundfile opens the path: on Windows an
+        # open NamedTemporaryFile cannot be reopened by another writer.
+        fd, output_path = tempfile.mkstemp(suffix=".wav", dir=OUTPUT_DIR)
+        os.close(fd)
+        sf.write(output_path, audio, SAMPLE_RATE)
 
         return output_path, "Audio generated successfully!"
     except Exception as e:
         return None, f"Error generating audio: {str(e)}"
+
 
 # Create Gradio interface
 with gr.Blocks(title="KittenTTS 😻", theme=gr.themes.Default()) as demo:
@@ -70,7 +104,7 @@ with gr.Blocks(title="KittenTTS 😻", theme=gr.themes.Default()) as demo:
             model_dropdown = gr.Dropdown(
                 label="Model",
                 choices=list(MODELS.keys()),
-                value="Nano (15M - Fastest)",
+                value=DEFAULT_MODEL,
                 info="Larger models produce higher quality audio",
             )
 
@@ -121,11 +155,16 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Pre-load the default model
+    # Pre-load the default model. A failure here must not stop the server from
+    # starting: the launcher waits for the printed URL, and the UI reports the
+    # load error per request anyway.
     print("Initializing KittenTTS model...")
-    get_model("Nano (15M - Fastest)")
+    try:
+        get_model(DEFAULT_MODEL)
+    except Exception as e:
+        print(f"Warning: could not preload the default model: {e}")
 
-    demo.launch(
+    demo.queue().launch(
         server_name=args.host,
         server_port=args.port,
         share=False,
