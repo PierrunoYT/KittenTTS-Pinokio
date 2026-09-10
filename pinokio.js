@@ -4,7 +4,7 @@ module.exports = {
   description: "Ultra-lightweight text-to-speech (15M-80M params) — CPU optimized, 8 voices, ONNX-powered",
   icon: "icon.jpg",
   menu: async (kernel, info) => {
-    let installed = info.exists("env")
+    let installed = info.exists("app/env")
     let running = {
       install: info.running("install.js"),
       start: info.running("start.js"),
