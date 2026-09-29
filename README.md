@@ -43,7 +43,7 @@ you want to keep.
 | Action | What it does |
 | --- | --- |
 | **Install** | Creates `app/env` and installs the dependencies. |
-| **Start** | Launches the Gradio server and opens the web UI. |
+| **Start** | Launches the Gradio server; **Open Web UI** then appears in the menu. |
 | **Update** | Pulls the latest launcher and re-runs the install. |
 | **Save Disk Space** | Deduplicates redundant library files across Pinokio apps. |
 | **Reset** | Deletes `app/env`, reverting to the pre-install state. |
