@@ -88,7 +88,7 @@ def generate_speech(text, voice, speed, model_name):
 
 
 # Create Gradio interface
-with gr.Blocks(title="KittenTTS 😻", theme=gr.themes.Default()) as demo:
+with gr.Blocks(title="KittenTTS 😻") as demo:
     gr.Markdown("# KittenTTS 😻")
     gr.Markdown("Ultra-lightweight text-to-speech — CPU optimized, high-quality voice synthesis")
 
