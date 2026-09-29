@@ -1,12 +1,7 @@
-import atexit
-import os
-import shutil
-import tempfile
 import threading
 
 import gradio as gr
 import numpy as np
-import soundfile as sf
 from kittentts import KittenTTS
 
 # Available models (ordered by quality/size)
@@ -29,10 +24,9 @@ MIN_SPEED, MAX_SPEED = 0.5, 2.0
 loaded_models = {}
 _model_lock = threading.Lock()
 
-# Generated clips live here so they can all be removed on exit instead of
-# accumulating in the system temp directory for the life of the machine.
-OUTPUT_DIR = tempfile.mkdtemp(prefix="kittentts-")
-atexit.register(shutil.rmtree, OUTPUT_DIR, True)
+# Gradio writes every returned clip into its cache. Sweep it hourly for clips
+# older than a day; Gradio also clears it when the server shuts down.
+CACHE_SWEEP = (3600, 86400)
 
 
 def get_model(model_name):
@@ -67,7 +61,7 @@ def generate_speech(text, voice, speed, model_name):
         tts_model = get_model(model_name)
         audio = tts_model.generate(text, voice=voice, speed=speed)
 
-        # Ensure type/shape/range are valid for soundfile writing
+        # Ensure type/shape/range are valid before encoding
         audio = np.asarray(audio, dtype=np.float32)
         if audio.ndim == 0:
             audio = audio.reshape(1)
@@ -76,19 +70,17 @@ def generate_speech(text, voice, speed, model_name):
         audio = np.nan_to_num(audio, nan=0.0, posinf=1.0, neginf=-1.0)
         audio = np.clip(audio, -1.0, 1.0)
 
-        # Close the handle before soundfile opens the path: on Windows an
-        # open NamedTemporaryFile cannot be reopened by another writer.
-        fd, output_path = tempfile.mkstemp(suffix=".wav", dir=OUTPUT_DIR)
-        os.close(fd)
-        sf.write(output_path, audio, SAMPLE_RATE)
+        # Hand Gradio 16-bit PCM directly; it writes the WAV into its own
+        # cache, so an intermediate temp file would only be a second copy.
+        pcm = (audio * 32767).astype(np.int16)
 
-        return output_path, "Audio generated successfully!"
+        return (SAMPLE_RATE, pcm), "Audio generated successfully!"
     except Exception as e:
         return None, f"Error generating audio: {str(e)}"
 
 
 # Create Gradio interface
-with gr.Blocks(title="KittenTTS 😻") as demo:
+with gr.Blocks(title="KittenTTS 😻", delete_cache=CACHE_SWEEP) as demo:
     gr.Markdown("# KittenTTS 😻")
     gr.Markdown("Ultra-lightweight text-to-speech — CPU optimized, high-quality voice synthesis")
 

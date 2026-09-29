@@ -34,8 +34,9 @@ Output is 24 kHz mono WAV, playable and downloadable from the **Generated
 Audio** panel. Models are cached in memory after their first use, so switching
 back to a model you have already used is instant.
 
-Generated clips are written to a temporary directory that is deleted when the
-app stops. Download anything you want to keep before shutting it down.
+Generated clips live in Gradio's cache: clips older than a day are swept
+hourly, and the whole cache is cleared when the app stops. Download anything
+you want to keep.
 
 ## Menu actions
 
