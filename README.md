@@ -71,7 +71,6 @@ python app.py --port 7860
 | `app/requirements.txt` | Python dependencies, including the pinned KittenTTS wheel. |
 | `pinokio.js` | Menu definition and install-state detection. |
 | `install.js` / `start.js` / `update.js` / `reset.js` / `link.js` | Pinokio launcher scripts. |
-| `torch.js` | Standard Pinokio PyTorch helper. Unused — KittenTTS is ONNX-only. |
 
 ## Requirements
 
