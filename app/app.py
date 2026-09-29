@@ -117,8 +117,8 @@ with gr.Blocks(title="KittenTTS 😻") as demo:
 
             speed_slider = gr.Slider(
                 label="Speed",
-                minimum=0.5,
-                maximum=2.0,
+                minimum=MIN_SPEED,
+                maximum=MAX_SPEED,
                 value=1.0,
                 step=0.1,
                 info="Adjust speech speed",
