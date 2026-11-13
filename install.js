@@ -18,7 +18,7 @@ module.exports = {
       params: {
         venv: "env",
         path: "app",
-        message: "python -c \"from kittentts import KittenTTS; print('KittenTTS installed successfully!')\"",
+        message: "python -c \"from kittenml import KittenTTS; print('KittenTTS installed successfully!')\"",
       },
     },
     {
