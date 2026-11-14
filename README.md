@@ -3,8 +3,9 @@
 A 1-click [Pinokio](https://pinokio.computer) launcher for
 [Kitten TTS 2](https://huggingface.co/KittenML/kitten-tts-2), a 1.7B
 text-to-speech model with voice cloning and expression control, and
-[Kitten TTS 2 Mini](https://huggingface.co/KittenML/kitten-tts-2-mini), an 82M
-model covering 16 languages. Both run on CPU — no GPU required.
+[Kitten TTS 2 Mini](https://huggingface.co/KittenML/kitten-tts-2-mini) (82M, 16 languages)
+and [Kitten TTS 2 Pico](https://huggingface.co/KittenML/kitten-tts-2-pico) (7M, 8 languages).
+All run on CPU — no GPU required.
 
 The launcher installs the `kittenml` package (with PyTorch) into an isolated
 virtual environment and serves a Gradio web UI for generating speech.
@@ -26,10 +27,10 @@ before the UI becomes responsive. Other models download when first selected.
 | Control | Notes |
 | --- | --- |
 | **Text** | The text to synthesize. Kitten TTS 2 supports `[emotion]` tags, `<laugh>`-style events and `(((emphasis)))`. |
-| **Model** | Kitten TTS 2 Standard (954 MB, lossless), Kitten TTS 2 Compact (492 MB, quantised embedding) or Kitten TTS 2 Mini (83 MB, int8 ONNX, much faster). |
-| **Language** | Mini only: en, de, es, it, pt, ru, hi, da, fi, fr, ja, ko, nl, sv, sw, tr. |
-| **Voice** | The selected model's built-in voices (for Mini, the selected language's voices). |
-| **Speed** | Mini only: 0.5×–2.0×. |
+| **Model** | Kitten TTS 2 Standard (954 MB, lossless), Kitten TTS 2 Compact (492 MB, quantised embedding), Kitten TTS 2 Mini (83 MB, int8 ONNX, much faster) or Kitten TTS 2 Pico (8 MB per language, int8 ONNX, fastest). |
+| **Language** | Mini/Pico only. Mini: en, de, es, it, pt, ru, hi, da, fi, fr, ja, ko, nl, sv, sw, tr. Pico: en, de, es, it, pt, ru, hi, fr. |
+| **Voice** | The selected model's built-in voices (for Mini/Pico, the selected language's voices). |
+| **Speed** | Mini/Pico only: 0.5×–2.0×. |
 | **Preset** | Kitten TTS 2 only: `stable` or `expressive`. |
 | **Voice cloning** | Kitten TTS 2 only: optional 5–30 s reference clip of one speaker, plus an optional transcript (auto-transcribed by Whisper when empty). Overrides the voice. |
 
@@ -87,4 +88,4 @@ MIT — see [LICENSE](LICENSE). The `kittenml` code is Apache 2.0; the Kitten TT
 weights are under the
 [Stellon Labs Community License](https://huggingface.co/KittenML/kitten-tts-2/blob/main/LICENSE.md)
 (commercial users must register; attribution "Powered by Stellon Labs" required).
-Kitten TTS 2 Mini weights are Apache 2.0.
+Kitten TTS 2 Mini and Pico weights are Apache 2.0.

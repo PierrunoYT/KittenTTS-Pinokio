@@ -4,16 +4,17 @@ import gradio as gr
 import numpy as np
 from kittenml import KittenTTS
 
-# Kitten TTS 2 (1.7B) supports presets and voice cloning; Kitten TTS 2 Mini
-# (82M, int8 ONNX) supports languages and speed instead.
-LARGE, MINI = "large", "mini"
+# Kitten TTS 2 (1.7B) supports presets and voice cloning; the tiny Kitten TTS 2
+# models (Mini 82M, Pico 7M; int8 ONNX) support languages and speed instead.
+LARGE, TINY = "large", "tiny"
 
 # label -> (repository, constructor kwargs, family). Only the selected
 # variant's files are downloaded.
 MODELS = {
     "Kitten TTS 2 (1.7B, 954 MB - Lossless)": ("KittenML/kitten-tts-2", {"weights": "packed"}, LARGE),
     "Kitten TTS 2 (1.7B, 492 MB - Compact)": ("KittenML/kitten-tts-2", {"weights": "emb4"}, LARGE),
-    "Kitten TTS 2 Mini (82M, 83 MB - Fast, 16 languages)": ("KittenML/kitten-tts-2-mini", {}, MINI),
+    "Kitten TTS 2 Mini (82M, 83 MB - Fast, 16 languages)": ("KittenML/kitten-tts-2-mini", {}, TINY),
+    "Kitten TTS 2 Pico (7M, 8 MB per language - Fastest, 8 languages)": ("KittenML/kitten-tts-2-pico", {}, TINY),
 }
 DEFAULT_MODEL = "Kitten TTS 2 (1.7B, 954 MB - Lossless)"
 
@@ -46,8 +47,8 @@ def get_model(model_name):
 
 
 def voices_for(model, family, language):
-    """Built-in voice names for the model (and language, for Mini)."""
-    if family == MINI:
+    """Built-in voice names for the model (and language, for tiny models)."""
+    if family == TINY:
         return list(model.available_voices.get(language, []))
     return sorted(model.available_voices)
 
@@ -59,10 +60,10 @@ def pick(choices, preferred):
 def on_model_change(model_name):
     """Refresh voices/languages and show only the controls the model supports."""
     family = MODELS[model_name][2]
-    is_mini = family == MINI
+    is_tiny = family == TINY
     try:
         model = get_model(model_name)
-        languages = list(model.languages) if is_mini else [DEFAULT_LANGUAGE]
+        languages = list(model.languages) if is_tiny else [DEFAULT_LANGUAGE]
         language = pick(languages, DEFAULT_LANGUAGE)
         voices = voices_for(model, family, language)
     except Exception as e:
@@ -70,16 +71,16 @@ def on_model_change(model_name):
         languages, language, voices = [DEFAULT_LANGUAGE], DEFAULT_LANGUAGE, DEFAULT_VOICES
     return (
         gr.update(choices=voices, value=pick(voices, DEFAULT_VOICE)),
-        gr.update(choices=languages, value=language, visible=is_mini),
-        gr.update(visible=is_mini),
-        gr.update(visible=not is_mini),
-        gr.update(visible=not is_mini),
+        gr.update(choices=languages, value=language, visible=is_tiny),
+        gr.update(visible=is_tiny),
+        gr.update(visible=not is_tiny),
+        gr.update(visible=not is_tiny),
     )
 
 
 def on_language_change(model_name, language):
     family = MODELS[model_name][2]
-    if family != MINI:
+    if family != TINY:
         return gr.update()
     try:
         voices = voices_for(get_model(model_name), family, language)
@@ -100,7 +101,7 @@ def generate_speech(text, voice, language, speed, reference, reference_text, pre
 
         tts_model = get_model(model_name)
 
-        if family == MINI:
+        if family == TINY:
             if language not in tts_model.languages:
                 return None, "Error: Invalid language selection"
             if voice not in tts_model.available_voices[language]:
@@ -153,13 +154,13 @@ with gr.Blocks(title="KittenTTS 😻", delete_cache=CACHE_SWEEP) as demo:
     gr.Markdown("# KittenTTS 😻")
     gr.Markdown(
         "Kitten TTS 2 — 1.7B text-to-speech with voice cloning and expression control, "
-        "or Kitten TTS 2 Mini — 82M, 16 languages, fast on CPU. "
+        "or the tiny Kitten TTS 2 Mini (82M, 16 languages) and Pico (7M, 8 languages), fast on CPU. "
         "Kitten TTS 2 weights are under the "
         "[Stellon Labs Community License](https://huggingface.co/KittenML/kitten-tts-2/blob/main/LICENSE.md) "
-        "(Powered by Stellon Labs); Mini is Apache 2.0."
+        "(Powered by Stellon Labs); Mini and Pico are Apache 2.0."
     )
 
-    default_is_mini = MODELS[DEFAULT_MODEL][2] == MINI
+    default_is_tiny = MODELS[DEFAULT_MODEL][2] == TINY
 
     with gr.Row():
         with gr.Column():
@@ -175,14 +176,14 @@ with gr.Blocks(title="KittenTTS 😻", delete_cache=CACHE_SWEEP) as demo:
                 label="Model",
                 choices=list(MODELS.keys()),
                 value=DEFAULT_MODEL,
-                info="Mini is much faster and smaller; the 1.7B model adds cloning and expression",
+                info="Mini and Pico are much faster and smaller; the 1.7B model adds cloning and expression",
             )
 
             language_dropdown = gr.Dropdown(
                 label="Language",
                 choices=[DEFAULT_LANGUAGE],
                 value=DEFAULT_LANGUAGE,
-                visible=default_is_mini,
+                visible=default_is_tiny,
             )
 
             voice_dropdown = gr.Dropdown(
@@ -198,7 +199,7 @@ with gr.Blocks(title="KittenTTS 😻", delete_cache=CACHE_SWEEP) as demo:
                 maximum=MAX_SPEED,
                 value=1.0,
                 step=0.1,
-                visible=default_is_mini,
+                visible=default_is_tiny,
             )
 
             preset_radio = gr.Radio(
@@ -206,10 +207,10 @@ with gr.Blocks(title="KittenTTS 😻", delete_cache=CACHE_SWEEP) as demo:
                 choices=PRESETS,
                 value="stable",
                 info="Trade stability against expressiveness",
-                visible=not default_is_mini,
+                visible=not default_is_tiny,
             )
 
-            with gr.Accordion("Voice cloning", open=False, visible=not default_is_mini) as cloning:
+            with gr.Accordion("Voice cloning", open=False, visible=not default_is_tiny) as cloning:
                 reference_audio = gr.Audio(
                     label="Reference clip (5-30 s, one speaker)",
                     type="filepath",
