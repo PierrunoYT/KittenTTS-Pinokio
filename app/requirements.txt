@@ -1,3 +1,6 @@
 gradio>=5.0.0
 numpy>=1.21.0
-kittenml==0.9.8
+kittenml[ja]==0.9.8
+# English G2P for Kitten TTS 2 Mini; misaki otherwise downloads it at first use
+# through spacy.cli, which exits the process when it fails.
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl

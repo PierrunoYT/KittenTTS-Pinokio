@@ -4,20 +4,26 @@ import gradio as gr
 import numpy as np
 from kittenml import KittenTTS
 
-MODEL_ID = "KittenML/kitten-tts-2"
+# Kitten TTS 2 (1.7B) supports presets and voice cloning; Kitten TTS 2 Mini
+# (82M, int8 ONNX) supports languages and speed instead.
+LARGE, MINI = "large", "mini"
 
-# Weight packings of Kitten TTS 2; only the selected one is downloaded.
-WEIGHTS = {
-    "Standard (954 MB - Lossless)": "packed",
-    "Compact (492 MB - Quantised embedding)": "emb4",
+# label -> (repository, constructor kwargs, family). Only the selected
+# variant's files are downloaded.
+MODELS = {
+    "Kitten TTS 2 (1.7B, 954 MB - Lossless)": ("KittenML/kitten-tts-2", {"weights": "packed"}, LARGE),
+    "Kitten TTS 2 (1.7B, 492 MB - Compact)": ("KittenML/kitten-tts-2", {"weights": "emb4"}, LARGE),
+    "Kitten TTS 2 Mini (82M, 83 MB - Fast, 16 languages)": ("KittenML/kitten-tts-2-mini", {}, MINI),
 }
-DEFAULT_WEIGHTS = "Standard (954 MB - Lossless)"
+DEFAULT_MODEL = "Kitten TTS 2 (1.7B, 954 MB - Lossless)"
 
 PRESETS = ["stable", "expressive"]
+MIN_SPEED, MAX_SPEED = 0.5, 2.0
 
 # Speakers shared with KittenTTS 0.8; shown until the model reports its full list.
 DEFAULT_VOICES = ["Bella", "Jasper", "Luna", "Bruno", "Rosie", "Hugo", "Kiki", "Leo"]
 DEFAULT_VOICE = "Luna"
+DEFAULT_LANGUAGE = "en"
 
 # Model cache. Loading is slow, so hold a lock to keep concurrent requests
 # from loading the same model several times over.
@@ -29,50 +35,100 @@ _model_lock = threading.Lock()
 CACHE_SWEEP = (3600, 86400)
 
 
-def get_model(weights_name):
-    weights = WEIGHTS[weights_name]
+def get_model(model_name):
+    repo, kwargs, _ = MODELS[model_name]
     with _model_lock:
-        if weights not in loaded_models:
-            print(f"Loading model: {MODEL_ID} ({weights})...")
-            loaded_models[weights] = KittenTTS(MODEL_ID, weights=weights)
-            print(f"Model {MODEL_ID} ({weights}) loaded successfully!")
-        return loaded_models[weights]
+        if model_name not in loaded_models:
+            print(f"Loading model: {repo} {kwargs}...")
+            loaded_models[model_name] = KittenTTS(repo, **kwargs)
+            print(f"Model {repo} {kwargs} loaded successfully!")
+        return loaded_models[model_name]
 
 
-def list_voices(weights_name):
+def voices_for(model, family, language):
+    """Built-in voice names for the model (and language, for Mini)."""
+    if family == MINI:
+        return list(model.available_voices.get(language, []))
+    return sorted(model.available_voices)
+
+
+def pick(choices, preferred):
+    return preferred if preferred in choices else (choices[0] if choices else None)
+
+
+def on_model_change(model_name):
+    """Refresh voices/languages and show only the controls the model supports."""
+    family = MODELS[model_name][2]
+    is_mini = family == MINI
     try:
-        voices = sorted(get_model(weights_name).available_voices)
+        model = get_model(model_name)
+        languages = list(model.languages) if is_mini else [DEFAULT_LANGUAGE]
+        language = pick(languages, DEFAULT_LANGUAGE)
+        voices = voices_for(model, family, language)
     except Exception as e:
         print(f"Warning: could not list voices: {e}")
-        voices = DEFAULT_VOICES
-    value = DEFAULT_VOICE if DEFAULT_VOICE in voices else voices[0]
-    return gr.update(choices=voices, value=value)
+        languages, language, voices = [DEFAULT_LANGUAGE], DEFAULT_LANGUAGE, DEFAULT_VOICES
+    return (
+        gr.update(choices=voices, value=pick(voices, DEFAULT_VOICE)),
+        gr.update(choices=languages, value=language, visible=is_mini),
+        gr.update(visible=is_mini),
+        gr.update(visible=not is_mini),
+        gr.update(visible=not is_mini),
+    )
 
 
-def generate_speech(text, voice, reference, reference_text, preset, weights_name):
+def on_language_change(model_name, language):
+    family = MODELS[model_name][2]
+    if family != MINI:
+        return gr.update()
+    try:
+        voices = voices_for(get_model(model_name), family, language)
+    except Exception as e:
+        print(f"Warning: could not list voices: {e}")
+        return gr.update()
+    return gr.update(choices=voices, value=pick(voices, None))
+
+
+def generate_speech(text, voice, language, speed, reference, reference_text, preset, model_name):
     try:
         if not isinstance(text, str) or not text.strip():
             return None, "Error: Input text cannot be empty"
 
-        if weights_name not in WEIGHTS:
+        if model_name not in MODELS:
             return None, "Error: Invalid model selection"
+        family = MODELS[model_name][2]
 
-        if preset not in PRESETS:
-            return None, "Error: Invalid preset selection"
+        tts_model = get_model(model_name)
 
-        tts_model = get_model(weights_name)
-
-        if reference:
-            # Cloning: the recording replaces the built-in speaker.
-            kwargs = {"reference": reference}
-            if isinstance(reference_text, str) and reference_text.strip():
-                kwargs["reference_text"] = reference_text.strip()
-        else:
-            if voice not in tts_model.available_voices:
+        if family == MINI:
+            if language not in tts_model.languages:
+                return None, "Error: Invalid language selection"
+            if voice not in tts_model.available_voices[language]:
                 return None, "Error: Invalid voice selection"
-            kwargs = {"voice": voice}
-
-        audio = tts_model.generate(text, preset=preset, **kwargs)
+            try:
+                speed = float(speed)
+            except (TypeError, ValueError):
+                return None, "Error: Speed must be a number"
+            if not np.isfinite(speed):
+                return None, "Error: Speed must be a number"
+            speed = min(max(speed, MIN_SPEED), MAX_SPEED)
+            audio = tts_model.generate(text, voice=voice, language=language, speed=speed)
+            source = f"{voice}, {language}"
+        else:
+            if preset not in PRESETS:
+                return None, "Error: Invalid preset selection"
+            if reference:
+                # Cloning: the recording replaces the built-in speaker.
+                kwargs = {"reference": reference}
+                if isinstance(reference_text, str) and reference_text.strip():
+                    kwargs["reference_text"] = reference_text.strip()
+                source = "cloned voice"
+            else:
+                if voice not in tts_model.available_voices:
+                    return None, "Error: Invalid voice selection"
+                kwargs = {"voice": voice}
+                source = voice
+            audio = tts_model.generate(text, preset=preset, **kwargs)
 
         # Ensure type/shape/range are valid before encoding
         audio = np.asarray(audio, dtype=np.float32)
@@ -87,7 +143,6 @@ def generate_speech(text, voice, reference, reference_text, preset, weights_name
         # cache, so an intermediate temp file would only be a second copy.
         pcm = (audio * 32767).astype(np.int16)
 
-        source = "cloned voice" if reference else voice
         return (tts_model.sample_rate, pcm), f"Audio generated successfully ({source})!"
     except Exception as e:
         return None, f"Error generating audio: {str(e)}"
@@ -97,11 +152,14 @@ def generate_speech(text, voice, reference, reference_text, preset, weights_name
 with gr.Blocks(title="KittenTTS 😻", delete_cache=CACHE_SWEEP) as demo:
     gr.Markdown("# KittenTTS 😻")
     gr.Markdown(
-        "Kitten TTS 2 — 1.7B text-to-speech with voice cloning and expression control. "
-        "Model weights are under the "
-        "[Stellon Labs Community License](https://huggingface.co/KittenML/kitten-tts-2/blob/main/LICENSE.md). "
-        "Powered by Stellon Labs."
+        "Kitten TTS 2 — 1.7B text-to-speech with voice cloning and expression control, "
+        "or Kitten TTS 2 Mini — 82M, 16 languages, fast on CPU. "
+        "Kitten TTS 2 weights are under the "
+        "[Stellon Labs Community License](https://huggingface.co/KittenML/kitten-tts-2/blob/main/LICENSE.md) "
+        "(Powered by Stellon Labs); Mini is Apache 2.0."
     )
+
+    default_is_mini = MODELS[DEFAULT_MODEL][2] == MINI
 
     with gr.Row():
         with gr.Column():
@@ -110,14 +168,21 @@ with gr.Blocks(title="KittenTTS 😻", delete_cache=CACHE_SWEEP) as demo:
                 placeholder="Enter text here...",
                 lines=3,
                 value="This high quality TTS model works without a GPU",
-                info="Supports [emotion] tags, <laugh>-style events and (((emphasis)))",
+                info="Kitten TTS 2 supports [emotion] tags, <laugh>-style events and (((emphasis)))",
             )
 
             model_dropdown = gr.Dropdown(
-                label="Model weights",
-                choices=list(WEIGHTS.keys()),
-                value=DEFAULT_WEIGHTS,
-                info="Compact halves the download at a small quality cost",
+                label="Model",
+                choices=list(MODELS.keys()),
+                value=DEFAULT_MODEL,
+                info="Mini is much faster and smaller; the 1.7B model adds cloning and expression",
+            )
+
+            language_dropdown = gr.Dropdown(
+                label="Language",
+                choices=[DEFAULT_LANGUAGE],
+                value=DEFAULT_LANGUAGE,
+                visible=default_is_mini,
             )
 
             voice_dropdown = gr.Dropdown(
@@ -127,14 +192,24 @@ with gr.Blocks(title="KittenTTS 😻", delete_cache=CACHE_SWEEP) as demo:
                 info="Built-in voice; ignored when a reference clip is given",
             )
 
+            speed_slider = gr.Slider(
+                label="Speed",
+                minimum=MIN_SPEED,
+                maximum=MAX_SPEED,
+                value=1.0,
+                step=0.1,
+                visible=default_is_mini,
+            )
+
             preset_radio = gr.Radio(
                 label="Preset",
                 choices=PRESETS,
                 value="stable",
                 info="Trade stability against expressiveness",
+                visible=not default_is_mini,
             )
 
-            with gr.Accordion("Voice cloning", open=False):
+            with gr.Accordion("Voice cloning", open=False, visible=not default_is_mini) as cloning:
                 reference_audio = gr.Audio(
                     label="Reference clip (5-30 s, one speaker)",
                     type="filepath",
@@ -154,22 +229,30 @@ with gr.Blocks(title="KittenTTS 😻", delete_cache=CACHE_SWEEP) as demo:
 
     gr.Examples(
         examples=[
-            ["Hello world! This is Kitten TTS 2 speaking.", "Luna", "stable"],
-            ["The quick brown fox jumps over the lazy dog.", "Bruno", "stable"],
-            ["[joyful] We actually won the grant <laugh> I can (((hardly))) believe it!", "Kiki", "expressive"],
-            ["Welcome to the future of efficient speech synthesis!", "Hugo", "stable"],
+            ["Hello world! This is Kitten TTS 2 speaking.", "stable"],
+            ["The quick brown fox jumps over the lazy dog.", "stable"],
+            ["[joyful] We actually won the grant <laugh> I can (((hardly))) believe it!", "expressive"],
+            ["Welcome to the future of efficient speech synthesis!", "stable"],
         ],
-        inputs=[text_input, voice_dropdown, preset_radio],
+        inputs=[text_input, preset_radio],
     )
 
-    demo.load(fn=list_voices, inputs=model_dropdown, outputs=voice_dropdown)
-    model_dropdown.change(fn=list_voices, inputs=model_dropdown, outputs=voice_dropdown)
+    model_outputs = [voice_dropdown, language_dropdown, speed_slider, preset_radio, cloning]
+    demo.load(fn=on_model_change, inputs=model_dropdown, outputs=model_outputs)
+    model_dropdown.change(fn=on_model_change, inputs=model_dropdown, outputs=model_outputs)
+    language_dropdown.change(
+        fn=on_language_change,
+        inputs=[model_dropdown, language_dropdown],
+        outputs=voice_dropdown,
+    )
 
     generate_btn.click(
         fn=generate_speech,
         inputs=[
             text_input,
             voice_dropdown,
+            language_dropdown,
+            speed_slider,
             reference_audio,
             reference_text_input,
             preset_radio,
@@ -192,7 +275,7 @@ if __name__ == "__main__":
     # load error per request anyway.
     print("Initializing Kitten TTS 2 model...")
     try:
-        get_model(DEFAULT_WEIGHTS)
+        get_model(DEFAULT_MODEL)
     except Exception as e:
         print(f"Warning: could not preload the default model: {e}")
 

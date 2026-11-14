@@ -2,8 +2,9 @@
 
 A 1-click [Pinokio](https://pinokio.computer) launcher for
 [Kitten TTS 2](https://huggingface.co/KittenML/kitten-tts-2), a 1.7B
-text-to-speech model with voice cloning and expression control that runs on
-CPU — no GPU required.
+text-to-speech model with voice cloning and expression control, and
+[Kitten TTS 2 Mini](https://huggingface.co/KittenML/kitten-tts-2-mini), an 82M
+model covering 16 languages. Both run on CPU — no GPU required.
 
 The launcher installs the `kittenml` package (with PyTorch) into an isolated
 virtual environment and serves a Gradio web UI for generating speech.
@@ -17,18 +18,20 @@ virtual environment and serves a Gradio web UI for generating speech.
    ```
 3. Click **Install**, then **Start** once it finishes.
 
-The first launch downloads the model (~954 MB, or ~492 MB for the Compact
-weights), so give it a moment before the UI becomes responsive.
+The first launch downloads the default model (~954 MB), so give it a moment
+before the UI becomes responsive. Other models download when first selected.
 
 ## Using it
 
 | Control | Notes |
 | --- | --- |
-| **Text** | The text to synthesize. Supports `[emotion]` tags, `<laugh>`-style events and `(((emphasis)))`. |
-| **Model weights** | Standard (954 MB, lossless) or Compact (492 MB, quantised embedding). |
-| **Voice** | Any of the model's built-in voices (Bella, Jasper, Luna, Bruno, Rosie, Hugo, Kiki, Leo and many more). |
-| **Preset** | `stable` or `expressive`. |
-| **Voice cloning** | Optional 5–30 s reference clip of one speaker, plus an optional transcript (auto-transcribed by Whisper when empty). Overrides the voice. |
+| **Text** | The text to synthesize. Kitten TTS 2 supports `[emotion]` tags, `<laugh>`-style events and `(((emphasis)))`. |
+| **Model** | Kitten TTS 2 Standard (954 MB, lossless), Kitten TTS 2 Compact (492 MB, quantised embedding) or Kitten TTS 2 Mini (83 MB, int8 ONNX, much faster). |
+| **Language** | Mini only: en, de, es, it, pt, ru, hi, da, fi, fr, ja, ko, nl, sv, sw, tr. |
+| **Voice** | The selected model's built-in voices (for Mini, the selected language's voices). |
+| **Speed** | Mini only: 0.5×–2.0×. |
+| **Preset** | Kitten TTS 2 only: `stable` or `expressive`. |
+| **Voice cloning** | Kitten TTS 2 only: optional 5–30 s reference clip of one speaker, plus an optional transcript (auto-transcribed by Whisper when empty). Overrides the voice. |
 
 Output is 24 kHz mono WAV, playable and downloadable from the **Generated
 Audio** panel. Models are cached in memory after their first use, so switching
@@ -84,3 +87,4 @@ MIT — see [LICENSE](LICENSE). The `kittenml` code is Apache 2.0; the Kitten TT
 weights are under the
 [Stellon Labs Community License](https://huggingface.co/KittenML/kitten-tts-2/blob/main/LICENSE.md)
 (commercial users must register; attribution "Powered by Stellon Labs" required).
+Kitten TTS 2 Mini weights are Apache 2.0.
