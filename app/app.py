@@ -5,7 +5,7 @@ import numpy as np
 from kittenml import KittenTTS
 
 # Kitten TTS 2 (1.7B) supports presets and voice cloning; the tiny Kitten TTS 2
-# models (Mini 82M, Pico 7M; int8 ONNX) support languages and speed instead.
+# models (Mini 82M, Nano 17M, Pico 7M; int8 ONNX) support languages and speed instead.
 LARGE, TINY = "large", "tiny"
 
 # label -> (repository, constructor kwargs, family). Only the selected
@@ -14,6 +14,7 @@ MODELS = {
     "Kitten TTS 2 (1.7B, 954 MB - Lossless)": ("KittenML/kitten-tts-2", {"weights": "packed"}, LARGE),
     "Kitten TTS 2 (1.7B, 492 MB - Compact)": ("KittenML/kitten-tts-2", {"weights": "emb4"}, LARGE),
     "Kitten TTS 2 Mini (82M, 83 MB - Fast, 16 languages)": ("KittenML/kitten-tts-2-mini", {}, TINY),
+    "Kitten TTS 2 Nano (17M, 17 MB per language - Faster, 8 languages)": ("KittenML/kitten-tts-2-nano", {}, TINY),
     "Kitten TTS 2 Pico (7M, 8 MB per language - Fastest, 8 languages)": ("KittenML/kitten-tts-2-pico", {}, TINY),
 }
 DEFAULT_MODEL = "Kitten TTS 2 (1.7B, 954 MB - Lossless)"
@@ -154,10 +155,10 @@ with gr.Blocks(title="KittenTTS 😻", delete_cache=CACHE_SWEEP) as demo:
     gr.Markdown("# KittenTTS 😻")
     gr.Markdown(
         "Kitten TTS 2 — 1.7B text-to-speech with voice cloning and expression control, "
-        "or the tiny Kitten TTS 2 Mini (82M, 16 languages) and Pico (7M, 8 languages), fast on CPU. "
+        "or the tiny Kitten TTS 2 Mini (82M, 16 languages), Nano (17M, 8 languages) and Pico (7M, 8 languages), fast on CPU. "
         "Kitten TTS 2 weights are under the "
         "[Stellon Labs Community License](https://huggingface.co/KittenML/kitten-tts-2/blob/main/LICENSE.md) "
-        "(Powered by Stellon Labs); Mini and Pico are Apache 2.0."
+        "(Powered by Stellon Labs); Mini, Nano and Pico are Apache 2.0."
     )
 
     default_is_tiny = MODELS[DEFAULT_MODEL][2] == TINY
@@ -176,7 +177,7 @@ with gr.Blocks(title="KittenTTS 😻", delete_cache=CACHE_SWEEP) as demo:
                 label="Model",
                 choices=list(MODELS.keys()),
                 value=DEFAULT_MODEL,
-                info="Mini and Pico are much faster and smaller; the 1.7B model adds cloning and expression",
+                info="Mini, Nano and Pico are much faster and smaller; the 1.7B model adds cloning and expression",
             )
 
             language_dropdown = gr.Dropdown(
