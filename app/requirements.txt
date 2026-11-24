@@ -1,6 +1,17 @@
 gradio>=5.0.0
 numpy>=1.21.0
-kittenml[ja]==0.9.8
+# The [mlx] extra only installs on Apple-silicon Macs (its own platform marker)
+# and lets Kitten TTS 2 run on the Mac GPU.
+kittenml[mlx]==0.9.8
+# Japanese G2P (Kitten TTS 2 Mini). Same packages as kittenml[ja], except
+# pyopenjtalk-plus replaces pyopenjtalk: it ships wheels for Windows, macOS and
+# Linux (same `pyopenjtalk` module), whereas pyopenjtalk is source-only and needs
+# CMake and a C++ compiler.
+fugashi
+unidic-lite
+pyopenjtalk-plus
+jaconv
+mojimoji
 # English G2P for Kitten TTS 2 Mini; misaki otherwise downloads it at first use
 # through spacy.cli, which exits the process when it fails.
 en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl

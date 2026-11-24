@@ -104,3 +104,5 @@ generated/
 
 # Agent tooling runtime
 .open-edit/
+package.json
+package-lock.json

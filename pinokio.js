@@ -1,8 +1,5 @@
 module.exports = {
   version: "7.0",
-  title: "KittenTTS 😻",
-  description: "Ultra-lightweight text-to-speech (15M-80M params) — CPU optimized, 8 voices, ONNX-powered",
-  icon: "icon.jpg",
   menu: async (kernel, info) => {
     let installed = info.exists("app/env")
     let running = {
@@ -12,12 +9,35 @@ module.exports = {
       reset: info.running("reset.js"),
       link: info.running("link.js")
     }
+    // Running scripts take priority over the install state, so an update or a
+    // reset in progress stays visible even while app/env is missing.
     if (running.install) {
       return [{
         default: true,
         icon: "fa-solid fa-plug",
         text: "Installing",
         href: "install.js",
+      }]
+    } else if (running.update) {
+      return [{
+        default: true,
+        icon: 'fa-solid fa-terminal',
+        text: "Updating",
+        href: "update.js",
+      }]
+    } else if (running.reset) {
+      return [{
+        default: true,
+        icon: 'fa-solid fa-terminal',
+        text: "Resetting",
+        href: "reset.js",
+      }]
+    } else if (running.link) {
+      return [{
+        default: true,
+        icon: 'fa-solid fa-terminal',
+        text: "Deduplicating",
+        href: "link.js",
       }]
     } else if (installed) {
       if (running.start) {
@@ -41,27 +61,6 @@ module.exports = {
             href: "start.js",
           }]
         }
-      } else if (running.update) {
-        return [{
-          default: true,
-          icon: 'fa-solid fa-terminal',
-          text: "Updating",
-          href: "update.js",
-        }]
-      } else if (running.reset) {
-        return [{
-          default: true,
-          icon: 'fa-solid fa-terminal',
-          text: "Resetting",
-          href: "reset.js",
-        }]
-      } else if (running.link) {
-        return [{
-          default: true,
-          icon: 'fa-solid fa-terminal',
-          text: "Deduplicating",
-          href: "link.js",
-        }]
       } else {
         return [{
           default: true,
@@ -85,7 +84,6 @@ module.exports = {
           text: "<div><strong>Reset</strong><div>Revert to pre-install state</div></div>",
           href: "reset.js",
           confirm: "Are you sure you wish to reset the app?"
-
         }]
       }
     } else {

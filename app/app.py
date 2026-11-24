@@ -1,3 +1,4 @@
+import gc
 import threading
 
 import gradio as gr
@@ -11,7 +12,9 @@ LARGE, TINY = "large", "tiny"
 # label -> (repository, constructor kwargs, family). Only the selected
 # variant's files are downloaded.
 MODELS = {
-    "Kitten TTS 2 (1.7B, 954 MB - Lossless)": ("KittenML/kitten-tts-2", {"weights": "packed"}, LARGE),
+    # backend="auto" runs the language model on the GPU through MLX on Apple-silicon
+    # Macs (packed weights only) and falls back to Torch everywhere else.
+    "Kitten TTS 2 (1.7B, 954 MB - Lossless)": ("KittenML/kitten-tts-2", {"weights": "packed", "backend": "auto"}, LARGE),
     "Kitten TTS 2 (1.7B, 492 MB - Compact)": ("KittenML/kitten-tts-2", {"weights": "emb4"}, LARGE),
     "Kitten TTS 2 Mini (82M, 83 MB - Fast, 16 languages)": ("KittenML/kitten-tts-2-mini", {}, TINY),
     "Kitten TTS 2 Nano (17M, 17 MB per language - Faster, 8 languages)": ("KittenML/kitten-tts-2-nano", {}, TINY),
@@ -38,13 +41,28 @@ CACHE_SWEEP = (3600, 86400)
 
 
 def get_model(model_name):
-    repo, kwargs, _ = MODELS[model_name]
+    repo, kwargs, family = MODELS[model_name]
     with _model_lock:
         if model_name not in loaded_models:
+            if family == LARGE:
+                # Two 1.7B variants do not fit comfortably in RAM together: drop the
+                # other one first. A generation still using it keeps its own reference.
+                for name in [n for n in loaded_models if MODELS[n][2] == LARGE]:
+                    del loaded_models[name]
+                gc.collect()
             print(f"Loading model: {repo} {kwargs}...")
             loaded_models[model_name] = KittenTTS(repo, **kwargs)
             print(f"Model {repo} {kwargs} loaded successfully!")
         return loaded_models[model_name]
+
+
+def forget_clones(model):
+    """Drop cached clone prompts. kittenml keys them by file path, and every Gradio
+    upload gets a fresh path, so without this each clone stays in memory for good."""
+    cache = getattr(model, "_reference_cache", None)
+    if cache:
+        for key in [k for k in cache if k[0] == "clone"]:
+            del cache[key]
 
 
 def voices_for(model, family, language):
@@ -130,7 +148,11 @@ def generate_speech(text, voice, language, speed, reference, reference_text, pre
                     return None, "Error: Invalid voice selection"
                 kwargs = {"voice": voice}
                 source = voice
-            audio = tts_model.generate(text, preset=preset, **kwargs)
+            try:
+                audio = tts_model.generate(text, preset=preset, **kwargs)
+            finally:
+                if reference:
+                    forget_clones(tts_model)
 
         # Ensure type/shape/range are valid before encoding
         audio = np.asarray(audio, dtype=np.float32)
